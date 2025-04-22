@@ -1,33 +1,27 @@
+import os
 import json
-import random
-from datetime import datetime, timedelta, timezone
+import gspread
+from oauth2client.service_account import ServiceAccountCredentials
 
-def fetch_tvl_data():
-    # Lấy 00:00 UTC hôm qua
-    utc_yesterday = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0) - timedelta(days=1)
-    timestamp = int(utc_yesterday.timestamp())
+# Đọc credentials từ biến môi trường
+credentials_content = os.environ['GCP_CREDENTIALS_JSON']
+credentials_dict = json.loads(credentials_content)
 
-    fake_tvl = round(random.uniform(80_000_000, 100_000_000), 2)
-    return [timestamp, fake_tvl]
+scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
+credentials = ServiceAccountCredentials.from_json_keyfile_dict(credentials_dict, scope)
+gc = gspread.authorize(credentials)
 
-def update_json():
-    with open("lfj_tvl.json", "r") as f:
-        data = json.load(f)
+# Mở Google Sheet
+sheet = gc.open_by_key("1mOJ9p76DLm7P0gGeVVkpN2Irr_R4Y8PX9gSImVmunyg")
+worksheet = sheet.worksheet("LFJ_TVL")
+data = worksheet.get_all_records()
 
-    new_record = fetch_tvl_data()
+# Chuyển đổi sang epoch + float
+new_data = []
+for row in data:
+    date_str = row['Date']
+    tvl_value = float(row['TVL (USD)'])
+    epoch_time = int(gspread.utils.a1_to_rowcol(date_str)[0])  # cần sửa lại dòng này cho chuẩn epoch
+    continue  # tạm thời để debug
 
-    # Gỡ bỏ bản ghi cũ nếu có cùng timestamp (00:00 UTC hôm qua)
-    data["record"] = [row for row in data["record"] if row[0] != new_record[0]]
-
-    # Thêm mới
-    data["record"].append(new_record)
-    print(f"✅ Updated record for {new_record[0]}: {new_record[1]}")
-
-    # Sort theo timestamp để dễ kiểm tra
-    data["record"].sort(key=lambda x: x[0])
-
-    with open("lfj_tvl.json", "w") as f:
-        json.dump(data, f, separators=(",", ":"))
-
-if __name__ == "__main__":
-    update_json()
+# TODO: đọc file JSON cũ, thêm record mới vào nếu chưa có, rồi ghi lại
