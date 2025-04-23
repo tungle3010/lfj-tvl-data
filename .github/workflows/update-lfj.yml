@@ -6,11 +6,12 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write  # Cho phép push code khi chạy tự động
+  contents: write  # Cho phép push khi chạy theo lịch trình
 
 jobs:
   update-tvl:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout repo
         uses: actions/checkout@v3
@@ -33,8 +34,10 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add lfj_tvl.json
-          if ! git diff --cached --quiet; then
+
+          if git diff --cached --quiet; then
+            echo "✅ No changes to commit."
+          else
             git commit -m "🔁 Auto update LFJ TVL"
             git push
-          else
-            echo "✅ No changes to commit."
+          fi
