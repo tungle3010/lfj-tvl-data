@@ -5,10 +5,12 @@ on:
     - cron: '0 16 * * *'  # 23:00 giờ Việt Nam (UTC+7)
   workflow_dispatch:
 
+permissions:
+  contents: write  # Cho phép push code khi chạy tự động
+
 jobs:
   update-tvl:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout repo
         uses: actions/checkout@v3
@@ -26,10 +28,13 @@ jobs:
           GCP_CREDENTIALS_JSON: ${{ secrets.GCP_CREDENTIALS_JSON }}
         run: python update_lfj_tvl.py
 
-      - name: Commit and push changes
+      - name: Commit and push changes if needed
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add lfj_tvl.json
-          git commit -m "🔁 Auto update LFJ TVL"
-          git push
+          if ! git diff --cached --quiet; then
+            git commit -m "🔁 Auto update LFJ TVL"
+            git push
+          else
+            echo "✅ No changes to commit."
